@@ -2,211 +2,161 @@ import javax.swing.*;
 import java.awt.*;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
-import java.awt.event.KeyEvent;
-import java.awt.event.KeyListener;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Stack;
 
-public class EnhancedCalculatorGUI extends JFrame implements ActionListener, KeyListener {
+public class EnhancedCalculatorGUI extends JFrame implements ActionListener {
 
-    private JTextField inputField1;
-    private JTextField inputField2;
-    private JComboBox<String> operationComboBox;
-    private JButton calculateButton, memoryPlusButton, memoryMinusButton, memoryClearButton, memoryRecallButton;
-    private JLabel resultLabel;
-    private double memoryValue = 0;
-    private JTextArea historyArea;
+    private JTextField inputField;
+    private JButton[] numberButtons;
+    private JButton[] operationButtons;
+    private JButton deleteButton, clearButton;
     private List<String> history = new ArrayList<>();
 
     public EnhancedCalculatorGUI() {
-        setTitle("Enhanced Calculator");
-        setSize(400, 400);
+        setTitle("Calculator");
+        setSize(300, 500);
         setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
-        setLayout(new GridBagLayout());
+        setLayout(new BorderLayout());
 
-        GridBagConstraints gbc = new GridBagConstraints();
-        gbc.insets = new Insets(5, 5, 5, 5);
+        // Input Field
+        inputField = new JTextField("3.141");
+        inputField.setHorizontalAlignment(JTextField.RIGHT);
+        inputField.setFont(new Font("Arial", Font.PLAIN, 24));
+        inputField.setEditable(false);
+        add(inputField, BorderLayout.NORTH);
 
-        // Input Fields
-        gbc.gridx = 0;
-        gbc.gridy = 0;
-        add(createLabel("Number 1:", Color.BLUE), gbc);
+        // Buttons Panel
+        JPanel buttonsPanel = new JPanel(new GridLayout(5, 4, 10, 10));
+        buttonsPanel.setBorder(BorderFactory.createEmptyBorder(10, 10, 10, 10));
 
-        gbc.gridx = 1;
-        gbc.gridy = 0;
-        gbc.fill = GridBagConstraints.HORIZONTAL;
-        inputField1 = createTextField();
-        inputField1.addKeyListener(this);
-        add(inputField1, gbc);
+        // Number and Operation Buttons
+        String[] buttonLabels = {
+            "1", "2", "3", "+",
+            "4", "5", "6", "-",
+            "7", "8", "9", "*",
+            ".", "0", "=", "/"
+        };
 
-        gbc.gridx = 0;
-        gbc.gridy = 1;
-        add(createLabel("Number 2:", Color.BLUE), gbc);
+        numberButtons = new JButton[10];
+        operationButtons = new JButton[4];
 
-        gbc.gridx = 1;
-        gbc.gridy = 1;
-        inputField2 = createTextField();
-        inputField2.addKeyListener(this);
-        add(inputField2, gbc);
+        for (int i = 0; i < buttonLabels.length; i++) {
+            JButton button = new JButton(buttonLabels[i]);
+            button.setFont(new Font("Arial", Font.PLAIN, 18));
+            button.setBackground(Color.WHITE);
+            button.addActionListener(this);
 
-        // Operation ComboBox
-        gbc.gridx = 0;
-        gbc.gridy = 2;
-        add(createLabel("Operation:", Color.GREEN), gbc);
+            if (i % 4 == 3) {
+                // Operation buttons
+                operationButtons[i/4] = button;
+                button.setBackground(new Color(240, 240, 240));
+            } else {
+                // Number buttons
+                if (!buttonLabels[i].matches("[+\\-*/=.]")) {
+                    numberButtons[Integer.parseInt(buttonLabels[i])] = button;
+                }
+            }
+            buttonsPanel.add(button);
+        }
 
-        gbc.gridx = 1;
-        gbc.gridy = 2;
-        String[] operations = {"+", "-", "*", "/", "sin", "cos", "tan", "sqrt", "^"};
-        operationComboBox = new JComboBox<>(operations);
-        operationComboBox.setBackground(Color.LIGHT_GRAY);
-        add(operationComboBox, gbc);
+        // Delete and Clear Buttons
+        JPanel controlPanel = new JPanel(new GridLayout(1, 2, 10, 10));
+        deleteButton = new JButton("Delete");
+        clearButton = new JButton("Clear");
 
-        // Calculate Button
-        gbc.gridx = 0;
-        gbc.gridy = 3;
-        gbc.gridwidth = 2;
-        gbc.fill = GridBagConstraints.HORIZONTAL;
-        calculateButton = createButton("Calculate", Color.ORANGE);
-        calculateButton.addActionListener(this);
-        add(calculateButton, gbc);
+        deleteButton.addActionListener(this);
+        clearButton.addActionListener(this);
 
-        // Memory Buttons
-        gbc.gridx = 0;
-        gbc.gridy = 4;
-        gbc.gridwidth = 1;
-        memoryPlusButton = createButton("M+", Color.CYAN);
-        memoryPlusButton.addActionListener(this);
-        add(memoryPlusButton, gbc);
+        deleteButton.setFont(new Font("Arial", Font.PLAIN, 16));
+        clearButton.setFont(new Font("Arial", Font.PLAIN, 16));
 
-        gbc.gridx = 1;
-        gbc.gridy = 4;
-        memoryMinusButton = createButton("M-", Color.CYAN);
-        memoryMinusButton.addActionListener(this);
-        add(memoryMinusButton, gbc);
+        controlPanel.add(deleteButton);
+        controlPanel.add(clearButton);
 
-        gbc.gridx = 0;
-        gbc.gridy = 5;
-        memoryClearButton = createButton("MC", Color.CYAN);
-        memoryClearButton.addActionListener(this);
-        add(memoryClearButton, gbc);
-
-        gbc.gridx = 1;
-        gbc.gridy = 5;
-        memoryRecallButton = createButton("MR", Color.CYAN);
-        memoryRecallButton.addActionListener(this);
-        add(memoryRecallButton, gbc);
-
-        // Result Label
-        gbc.gridx = 0;
-        gbc.gridy = 6;
-        gbc.gridwidth = 2;
-        resultLabel = createLabel("Result: ", Color.RED);
-        add(resultLabel, gbc);
-
-        // History Area
-        gbc.gridx = 0;
-        gbc.gridy = 7;
-        gbc.gridwidth = 2;
-        gbc.fill = GridBagConstraints.BOTH;
-        gbc.weighty = 1.0;
-        historyArea = new JTextArea();
-        historyArea.setEditable(false);
-        JScrollPane scrollPane = new JScrollPane(historyArea);
-        add(scrollPane, gbc);
-
-        getContentPane().setBackground(new Color(240, 248, 255));
+        // Add panels to frame
+        add(buttonsPanel, BorderLayout.CENTER);
+        add(controlPanel, BorderLayout.SOUTH);
 
         setVisible(true);
     }
 
-    private JLabel createLabel(String text, Color color) {
-        JLabel label = new JLabel(text);
-        label.setForeground(color);
-        return label;
-    }
-
-    private JTextField createTextField() {
-        JTextField textField = new JTextField();
-        textField.setBackground(Color.WHITE);
-        return textField;
-    }
-
-    private JButton createButton(String text, Color color) {
-        JButton button = new JButton(text);
-        button.setBackground(color);
-        button.setForeground(Color.BLACK);
-        return button;
-    }
-
     @Override
     public void actionPerformed(ActionEvent e) {
-        if (e.getSource() == calculateButton) {
-            calculateResult();
-        } else if (e.getSource() == memoryPlusButton) {
-            memoryValue += Double.parseDouble(resultLabel.getText().substring(8));
-        } else if (e.getSource() == memoryMinusButton) {
-            memoryValue -= Double.parseDouble(resultLabel.getText().substring(8));
-        } else if (e.getSource() == memoryClearButton) {
-            memoryValue = 0;
-        } else if (e.getSource() == memoryRecallButton) {
-            resultLabel.setText("Result: " + memoryValue);
-        }
-    }
-
-    private void calculateResult() {
-        try {
-            double num1 = Double.parseDouble(inputField1.getText());
-            double num2 = Double.parseDouble(inputField2.getText());
-            String operation = (String) operationComboBox.getSelectedItem();
-            double result = 0;
-
-            switch (operation) {
-                case "+": result = num1 + num2; break;
-                case "-": result = num1 - num2; break;
-                case "*": result = num1 * num2; break;
-                case "/": if (num2 != 0) { result = num1 / num2; } else { resultLabel.setText("Result: Division by zero"); return; } break;
-                case "sin": result = Math.sin(Math.toRadians(num1)); break;
-                case "cos": result = Math.cos(Math.toRadians(num1)); break;
-                case "tan": result = Math.tan(Math.toRadians(num1)); break;
-                case "sqrt": result = Math.sqrt(num1); break;
-                case "^": result = Math.pow(num1, num2); break;
+        String command = e.getActionCommand();
+        String currentText = inputField.getText();
+        
+        if (command.matches("[0-9.]")) {
+            // Prevent multiple decimal points
+            if (!(command.equals(".") && currentText.contains("."))) {
+                inputField.setText(currentText + command);
             }
-            resultLabel.setText("Result: " + result);
-            addToHistory(num1, num2, operation, result);
-        } catch (NumberFormatException ex) {
-            resultLabel.setText("Result: Invalid input");
+        } else if (command.matches("[+\\-*/]")) {
+            // Prevent multiple consecutive operators
+            if (!isOperator(currentText.charAt(currentText.length() - 1))) {
+                inputField.setText(currentText + command);
+            }
+        } else if (command.equals("=")) {
+            // Calculate result
+            try {
+                double result = evaluateExpression(currentText);
+                inputField.setText(String.valueOf(result));
+            } catch (Exception ex) {
+                inputField.setText("Error");
+            }
+        } else if (command.equals("Delete")) {
+            // Remove last character
+            if (!currentText.isEmpty()) {
+                inputField.setText(currentText.substring(0, currentText.length() - 1));
+            }
+        } else if (command.equals("Clear")) {
+            // Clear input field
+            inputField.setText("");
         }
     }
 
-    private void addToHistory(double num1, double num2, String operation, double result) {
-        String entry = num1 + " " + operation + " " + num2 + " = " + result;
-        history.add(entry);
-        StringBuilder historyText = new StringBuilder();
-        for (String s : history) {
-            historyText.append(s).append("\n");
-        }
-        historyArea.setText(historyText.toString());
+    private boolean isOperator(char c) {
+        return c == '+' || c == '-' || c == '*' || c == '/';
     }
 
-    @Override
-    public void keyTyped(KeyEvent e) {}
+    private double evaluateExpression(String expression) {
+        // Remove any trailing operator
+        while (!expression.isEmpty() && isOperator(expression.charAt(expression.length() - 1))) {
+            expression = expression.substring(0, expression.length() - 1);
+        }
 
-    @Override
-    public void keyPressed(KeyEvent e) {
-        if (e.getKeyCode() == KeyEvent.VK_ENTER) {
-            calculateResult();
+        // Simple expression evaluation using two operands and one operator
+        for (char op : new char[]{'+', '-', '*', '/'}) {
+            int opIndex = expression.lastIndexOf(op);
+            if (opIndex != -1) {
+                try {
+                    double left = Double.parseDouble(expression.substring(0, opIndex));
+                    double right = Double.parseDouble(expression.substring(opIndex + 1));
+                    
+                    switch (op) {
+                        case '+': return left + right;
+                        case '-': return left - right;
+                        case '*': return left * right;
+                        case '/': 
+                            if (right == 0) throw new ArithmeticException("Division by zero");
+                            return left / right;
+                    }
+                } catch (NumberFormatException | StringIndexOutOfBoundsException e) {
+                    throw new IllegalArgumentException("Invalid expression");
+                }
+            }
+        }
+        
+        // If no operator found, try to parse as a single number
+        try {
+            return Double.parseDouble(expression);
+        } catch (NumberFormatException e) {
+            throw new IllegalArgumentException("Invalid expression");
         }
     }
-
-    @Override
-    public void keyReleased(KeyEvent e) {}
 
     public static void main(String[] args) {
-        SwingUtilities.invokeLater(new Runnable() {
-            @Override
-            public void run() {
-                new EnhancedCalculatorGUI();
-            }
-        });
+        SwingUtilities.invokeLater(() -> new EnhancedCalculatorGUI());
     }
 }
